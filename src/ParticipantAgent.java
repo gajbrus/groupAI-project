@@ -46,8 +46,8 @@ public class ParticipantAgent extends Agent {
     catch (FIPAException fe) {
       fe.printStackTrace();
     }
-		
-	
+		addBehaviour(new MeetingResponder());
+
   }
   protected void takeDown() {
     //book selling service deregistration at DF
@@ -68,9 +68,8 @@ public class ParticipantAgent extends Agent {
 		addBehaviour(new RequestMeeting());
 	}
 
-  private class RequestMeeting extends Behaviour {
+  private class RequestMeeting extends OneShotBehaviour {
 
-    private boolean finished = false;
     private AID[] participants;
 
     public void action() {
@@ -98,14 +97,34 @@ public class ParticipantAgent extends Agent {
         fe.printStackTrace();
       }
 
+      ACLMessage req = new ACLMessage(ACLMessage.REQUEST);
+      for (int i = 0; i < participants.length; ++i) {
+        req.addReceiver(participants[i]);
+      }
+      req.setConversationId("meeting-request");
+      req.setReplyWith("request"+System.currentTimeMillis()); //unique value
+      myAgent.send(req);
+      System.out.println(getAID().getLocalName() + ": Request sent to all participants");
 
-
-      finished = true;   // behaviour finishes after one execution
-    }
-
-    public boolean done() {
-      return finished;
     }
   }
 
+  private class MeetingResponder extends CyclicBehaviour {
+
+    public void action() {
+      //proposals only template
+      MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
+      ACLMessage msg = myAgent.receive(mt);
+      if (msg != null) {
+        // REQUEST received. Reply with the availability calendar
+        ACLMessage reply = msg.createReply();
+        reply.setPerformative(ACLMessage.INFORM);
+        myAgent.send(reply);
+        System.out.println(getAID().getLocalName() + ": Sent availability calendar to " + msg.getSender().getLocalName());
+      }
+      else {
+        block();
+      }
+    }
+  }
 }
