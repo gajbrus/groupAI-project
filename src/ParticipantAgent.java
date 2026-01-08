@@ -119,6 +119,9 @@ public class ParticipantAgent extends Agent {
         // REQUEST received. Reply with the availability calendar
         ACLMessage reply = msg.createReply();
         reply.setPerformative(ACLMessage.INFORM);
+
+        //Here we set the content of the reply with the availability calendar
+        
         myAgent.send(reply);
         System.out.println(getAID().getLocalName() + ": Sent availability calendar to " + msg.getSender().getLocalName());
       }
