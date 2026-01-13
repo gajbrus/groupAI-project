@@ -81,6 +81,7 @@ public class ParticipantAgent extends Agent {
     private int step = 0;
     private double[][] schedule = new double[calendar.length][2];
     private int zeroCounter = 0;
+    private double threshold = 0.99;
 
     public void action() {
 
@@ -121,10 +122,12 @@ public class ParticipantAgent extends Agent {
           }
           qr.setConversationId("meeting-request");
           qr.setReplyWith("request"+System.currentTimeMillis()); //unique value
+          qr.setContent(String.valueOf(threshold)); //availability threshold
           myAgent.send(qr);
           System.out.println(getAID().getLocalName() + ": Request sent to all participants " + qr.getContent());
 
           startTime = System.currentTimeMillis();
+          threshold -= 0.01; //lower the threshold for next round
           step = 2;
           break;
       
@@ -191,7 +194,7 @@ public class ParticipantAgent extends Agent {
             }
           }
           if(maxIndex == -1) {
-            if (zeroCounter == participants.length + 1) {
+            if (zeroCounter == (participants.length + 1) && threshold < 0.01) {
               System.out.println(getAID().getLocalName() + ": All participants are fully busy. No meeting can be scheduled.");
               step = 4;
             } else {
@@ -213,7 +216,9 @@ public class ParticipantAgent extends Agent {
             myAgent.send(inform);
             calendar[maxIndex] = 0.0; //mark this slot as busy
             for(int i=0; i<calendar.length; i++) { 
-              calendarReservations[i] = false; //free all slots         
+              calendarReservations[i] = false; //free all slots
+              schedule[i][0] = 0.0;
+              schedule[i][1] = 0.0;         
             }
             System.out.println(getAID().getLocalName() + ": Meeting confirmed at slot " + maxIndex);
             step = 4;
@@ -246,9 +251,10 @@ public class ParticipantAgent extends Agent {
         //Here we set the content of the reply with the availability calendar
         int maxIndex = 0;
         double maxValue = 0.0;
+        double threshold = Double.parseDouble(msg.getContent());
 
         for(int i=0; i<calendar.length; i++) {
-          if(calendar[i] > maxValue && !calendarReservations[i]) {
+          if(calendar[i] > threshold && calendar[i] > maxValue && !calendarReservations[i]) {
             maxValue = calendar[i];
             maxIndex = i;
           }
