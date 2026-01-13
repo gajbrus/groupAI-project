@@ -14,7 +14,7 @@ import java.util.Random;
 public class ParticipantAgent extends Agent {
 
   private ParticipantAgentGui myGui;
-  private double[] calendar = new double[24]; //availability calendar
+  private double[] calendar = new double[1000]; //availability calendar
   private boolean[] calendarReservations = new boolean[calendar.length]; //availability calendar
 
 
@@ -27,7 +27,7 @@ public class ParticipantAgent extends Agent {
     Random rand = new Random();
     //initialize random availability calendar
     for (int i = 0; i < calendar.length; i++) {
-      calendar[i] = rand.nextDouble();
+      calendar[i] = Math.round(rand.nextDouble() * 1000.0) / 1000.0;
     }
 
     System.out.println("Availability calendar for " + getAID().getLocalName() + ":");
@@ -81,7 +81,6 @@ public class ParticipantAgent extends Agent {
     private int step = 0;
     private double[][] schedule = new double[calendar.length][2];
     private int zeroCounter = 0;
-    private double threshold = 0.99;
 
     public void action() {
 
@@ -122,12 +121,10 @@ public class ParticipantAgent extends Agent {
           }
           qr.setConversationId("meeting-request");
           qr.setReplyWith("request"+System.currentTimeMillis()); //unique value
-          qr.setContent(String.valueOf(threshold)); //availability threshold
           myAgent.send(qr);
           System.out.println(getAID().getLocalName() + ": Request sent to all participants " + qr.getContent());
 
           startTime = System.currentTimeMillis();
-          threshold -= 0.01; //lower the threshold for next round
           step = 2;
           break;
       
@@ -162,7 +159,7 @@ public class ParticipantAgent extends Agent {
                 }
               }
               if(maxValue != 0.0)  {
-                calendarReservations[maxIndex] = true; //reserve this hour
+                calendarReservations[maxIndex] = true; //reserve this slot
                 schedule[maxIndex][0] += maxValue;
                 schedule[maxIndex][1] += 1.0;
               } else {
@@ -188,13 +185,13 @@ public class ParticipantAgent extends Agent {
           int maxIndex = -1;
           double maxValue = 0.0;
           for(int i = 0; i < schedule.length; i++) {
-            if(schedule[i][1] == participants.length && schedule[i][0] > maxValue) {
+            if(schedule[i][1] == participants.length+1 && schedule[i][0] > maxValue) {
               maxValue = schedule[i][0];
               maxIndex = i;
             }
           }
           if(maxIndex == -1) {
-            if (zeroCounter == (participants.length + 1) && threshold < 0.01) {
+            if (zeroCounter == (participants.length + 1)) {
               System.out.println(getAID().getLocalName() + ": All participants are fully busy. No meeting can be scheduled.");
               step = 4;
             } else {
@@ -251,10 +248,9 @@ public class ParticipantAgent extends Agent {
         //Here we set the content of the reply with the availability calendar
         int maxIndex = 0;
         double maxValue = 0.0;
-        double threshold = Double.parseDouble(msg.getContent());
 
         for(int i=0; i<calendar.length; i++) {
-          if(calendar[i] > threshold && calendar[i] > maxValue && !calendarReservations[i]) {
+          if(calendar[i] > maxValue && !calendarReservations[i]) {
             maxValue = calendar[i];
             maxIndex = i;
           }
