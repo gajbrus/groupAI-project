@@ -15,7 +15,7 @@ import java.util.*;
 public class ParticipantAgent extends Agent {
 
   private ParticipantAgentGui myGui;
-  private double[] calendar = new double[10]; //availability calendar
+  private double[] calendar = new double[8760]; //availability calendar
   Map<String, List<Integer>> reservations = new HashMap<>();
 
 
@@ -31,10 +31,10 @@ public class ParticipantAgent extends Agent {
       calendar[i] = Math.round(rand.nextDouble() * 1000.0) / 1000.0;
     }
 
-    System.out.println("Availability calendar for " + getAID().getLocalName() + ":");
-    for (int i = 0; i < calendar.length; i++) {
+    System.out.println("Availability calendar for " + getAID().getLocalName() + " added");
+    /*for (int i = 0; i < calendar.length; i++) {
       System.out.printf("%s: slot %2d: %.2f\n", getAID().getLocalName(), i, calendar[i]);
-    }
+    }*/
     
 	  System.out.println("Hello! " + getAID().getLocalName() + " is ready for a meeting.");
 	  myGui = new ParticipantAgentGui(this);
@@ -133,7 +133,7 @@ public class ParticipantAgent extends Agent {
           qr.setConversationId(code);
           qr.setReplyWith(code); //unique value
           myAgent.send(qr);
-          System.out.println(getAID().getLocalName() + ": Request sent to all participants " + qr.getContent());
+          System.out.println(getAID().getLocalName() + ": Request sent to all participants");
 
           startTime = System.currentTimeMillis();
           step = 2;
@@ -149,7 +149,7 @@ public class ParticipantAgent extends Agent {
           if (reply != null) {
             //Reply received
             repliesCnt++;
-            System.out.println(getAID().getLocalName() + ": Reply received from " + reply.getSender().getLocalName() + ": with slot,availability " + reply.getContent() + " " +  repliesCnt + "/" + participants.length);
+            System.out.println(getAID().getLocalName() + ": Reply received from " + reply.getSender().getLocalName() + ": (with slot,availability) (" + reply.getContent() + ") | Replies: " +  repliesCnt + "/" + participants.length);
             //Here we save the received availability calendar
             String content = reply.getContent();
             String[] parts = content.split(",");
@@ -180,7 +180,7 @@ public class ParticipantAgent extends Agent {
               } else {
                 zeroCounter++;
               }
-              System.out.println(getAID().getLocalName() + ": Added own slot,availability " + maxIndex + "," + maxValue);
+              System.out.println(getAID().getLocalName() + ": Added my own (slot,availability) (" + maxIndex + "," + maxValue + ")");
               
               step = 3;
             }
@@ -195,7 +195,7 @@ public class ParticipantAgent extends Agent {
           break;
         case 3:
           //Here we should process all received availability calendars and find a common meeting time
-          System.out.println(getAID().getLocalName() + ": Processing received availability calendars to find a common meeting time... or no common time.");
+          System.out.println(getAID().getLocalName() + ": Processing received slots to find a common meeting slot... or no common slot.");
           
           int maxIndex = -1;
           double maxValue = 0.0;
@@ -207,10 +207,10 @@ public class ParticipantAgent extends Agent {
           }
           if(maxIndex == -1) {
             if (zeroCounter == (participants.length + 1)) {
-              System.out.println(getAID().getLocalName() + ": All participants are fully busy. No meeting can be scheduled.");
+              System.out.println(getAID().getLocalName() + ": No meeting can be scheduled.");
               step = 4;
             } else {
-              System.out.println(getAID().getLocalName() + ": No common meeting time found among current slots.");
+              System.out.println(getAID().getLocalName() + ": No common meeting time found among current slots, requesting more slots...");
               repliesCnt = 0;
               zeroCounter = 0;
               step = 1;
