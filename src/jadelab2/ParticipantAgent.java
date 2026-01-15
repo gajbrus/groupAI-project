@@ -9,13 +9,14 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
-import java.util.Random;
+
+import java.util.*;
 
 public class ParticipantAgent extends Agent {
 
   private ParticipantAgentGui myGui;
-  private double[] calendar = new double[1000]; //availability calendar
-  private boolean[] calendarReservations = new boolean[calendar.length]; //availability calendar
+  private double[] calendar = new double[10]; //availability calendar
+  Map<String, List<Integer>> reservations = new HashMap<>();
 
 
   private long startTime;
@@ -72,6 +73,15 @@ public class ParticipantAgent extends Agent {
 	{
 		addBehaviour(new RequestMeeting());
 	}
+  //check if a slot is reserved
+  private boolean isReserved(int slot) {
+      for (List<Integer> slots : reservations.values()) {
+          if (slots.contains(slot)) {
+              return true;
+          }
+      }
+      return false;
+  }
 
   private class RequestMeeting extends Behaviour {
 
@@ -81,6 +91,7 @@ public class ParticipantAgent extends Agent {
     private int step = 0;
     private double[][] schedule = new double[calendar.length][2];
     private int zeroCounter = 0;
+    private String code = "meeting"+System.currentTimeMillis();
 
     public void action() {
 
@@ -119,8 +130,8 @@ public class ParticipantAgent extends Agent {
           for (int i = 0; i < participants.length; ++i) {
             qr.addReceiver(participants[i]);
           }
-          qr.setConversationId("meeting-request");
-          qr.setReplyWith("request"+System.currentTimeMillis()); //unique value
+          qr.setConversationId(code);
+          qr.setReplyWith(code); //unique value
           myAgent.send(qr);
           System.out.println(getAID().getLocalName() + ": Request sent to all participants " + qr.getContent());
 
@@ -130,8 +141,12 @@ public class ParticipantAgent extends Agent {
       
         case 2:
           //Receive all proposals/refusals from participant agents
+          mt = MessageTemplate.and(
+                  MessageTemplate.MatchConversationId(code),
+                  MessageTemplate.MatchPerformative(ACLMessage.INFORM_REF)
+          );
           ACLMessage reply = myAgent.receive(mt);
-          if (reply != null && reply.getPerformative() == ACLMessage.INFORM_REF) {
+          if (reply != null) {
             //Reply received
             repliesCnt++;
             System.out.println(getAID().getLocalName() + ": Reply received from " + reply.getSender().getLocalName() + ": with slot,availability " + reply.getContent() + " " +  repliesCnt + "/" + participants.length);
@@ -153,13 +168,13 @@ public class ParticipantAgent extends Agent {
               double maxValue = 0.0;
 
               for(int i=0; i<calendar.length; i++) {
-                if(calendar[i] > maxValue && !calendarReservations[i]) {
+                if(calendar[i] > maxValue && !isReserved(i)) {
                   maxValue = calendar[i];
                   maxIndex = i;
                 }
               }
               if(maxValue != 0.0)  {
-                calendarReservations[maxIndex] = true; //reserve this slot
+                reservations.computeIfAbsent(code, k -> new ArrayList<>()).add(maxIndex); //reserve this slot
                 schedule[maxIndex][0] += maxValue;
                 schedule[maxIndex][1] += 1.0;
               } else {
@@ -208,15 +223,15 @@ public class ParticipantAgent extends Agent {
             for (int i = 0; i < participants.length; ++i) {
               inform.addReceiver(participants[i]);
             }
-            inform.setConversationId("meeting-agreed");
+            inform.setConversationId(code);
+            inform.setReplyWith(code); //unique value
+
             inform.setContent(String.valueOf(maxIndex)); //agreed meeting time slot
             myAgent.send(inform);
             calendar[maxIndex] = 0.0; //mark this slot as busy
-            for(int i=0; i<calendar.length; i++) { 
-              calendarReservations[i] = false; //free all slots
-              schedule[i][0] = 0.0;
-              schedule[i][1] = 0.0;         
-            }
+
+            reservations.remove(code);
+
             System.out.println(getAID().getLocalName() + ": Meeting confirmed at slot " + maxIndex);
             step = 4;
           }
@@ -245,18 +260,21 @@ public class ParticipantAgent extends Agent {
         ACLMessage reply = msg.createReply();
         reply.setPerformative(ACLMessage.INFORM_REF);
 
+        //unique value
+        String code = msg.getReplyWith();
+
         //Here we set the content of the reply with the availability calendar
         int maxIndex = 0;
         double maxValue = 0.0;
 
         for(int i=0; i<calendar.length; i++) {
-          if(calendar[i] > maxValue && !calendarReservations[i]) {
+          if(calendar[i] > maxValue && !isReserved(i)) {
             maxValue = calendar[i];
             maxIndex = i;
           }
         }
         if(maxValue != 0.0)  {
-          calendarReservations[maxIndex] = true; //reserve this hour
+          reservations.computeIfAbsent(code, k -> new ArrayList<>()).add(maxIndex); //reserve this slot
         }
         reply.setContent(maxIndex + "," + maxValue);
 
@@ -280,9 +298,10 @@ public class ParticipantAgent extends Agent {
         String content = msg.getContent();
         int agreedSlot = Integer.parseInt(content);
         calendar[agreedSlot] = 0.0; //mark this slot as busy
-        for(int i=0; i<calendar.length; i++) { 
-          calendarReservations[i] = false; //free all slots         
-        }
+
+        String code = msg.getReplyWith();
+        reservations.remove(code);
+
         System.out.println(getAID().getLocalName() + ": Meeting confirmed at slot " + agreedSlot);
       } else {
         block();
