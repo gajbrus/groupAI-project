@@ -15,7 +15,7 @@ import java.util.*;
 public class ParticipantAgent extends Agent {
 
   private ParticipantAgentGui myGui;
-  private double[] calendar = new double[8760]; //availability calendar
+  private double[] calendar = new double[1000]; //availability calendar
   Map<String, List<Integer>> reservations = new HashMap<>();
 
 
@@ -199,17 +199,22 @@ public class ParticipantAgent extends Agent {
           
           int maxIndex = -1;
           double maxValue = 0.0;
+          int numberOfSlots = 0;
+
           for(int i = 0; i < schedule.length; i++) {
-            if(schedule[i][1] == participants.length+1 && schedule[i][0] > maxValue) {
-              maxValue = schedule[i][0];
-              maxIndex = i;
+            if(schedule[i][1] == participants.length+1) {
+              numberOfSlots++;
+              if(schedule[i][0] > maxValue) {
+                maxValue = schedule[i][0];
+                maxIndex = i;
+              }
             }
           }
-          if(maxIndex == -1) {
+          if(maxIndex == -1 || (numberOfSlots < 20 && zeroCounter != (participants.length + 1))) {
             if (zeroCounter == (participants.length + 1)) {
               System.out.println(getAID().getLocalName() + ": No meeting can be scheduled.");
               step = 4;
-            } else {
+            } else  {
               System.out.println(getAID().getLocalName() + ": No common meeting time found among current slots, requesting more slots...");
               repliesCnt = 0;
               zeroCounter = 0;
