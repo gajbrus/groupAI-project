@@ -15,7 +15,7 @@ import java.util.*;
 public class ParticipantAgent extends Agent {
 
   private ParticipantAgentGui myGui;
-  private double[] calendar = new double[1000]; //availability calendar
+  private double[] calendar = new double[500]; //availability calendar
   Map<String, List<Integer>> reservations = new HashMap<>();
 
 
@@ -210,7 +210,7 @@ public class ParticipantAgent extends Agent {
               }
             }
           }
-          if(maxIndex == -1 || (numberOfSlots < 20 && zeroCounter != (participants.length + 1))) {
+          if(maxIndex == -1 || (numberOfSlots < 10 && zeroCounter != (participants.length + 1))) {
             if (zeroCounter == (participants.length + 1)) {
               System.out.println(getAID().getLocalName() + ": No meeting can be scheduled.");
               step = 4;
